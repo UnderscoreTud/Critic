@@ -1,12 +1,10 @@
 package me.tud.critic.lexer;
 
-import me.tud.critic.data.DefaultCheckers;
 import me.tud.critic.exception.ParseException;
 import me.tud.critic.lexer.token.Token;
 import me.tud.critic.lexer.token.TokenType;
 
 import java.util.LinkedList;
-import java.util.List;
 import java.util.function.BiPredicate;
 
 /**
@@ -16,17 +14,18 @@ import java.util.function.BiPredicate;
 public class LexicalAnalyser {
 
     /**
+     * A list of primitive types that are recognized by this lexer.
+     */
+    public static final String[] PRIMITIVE_TYPES = {
+            "int", "float", "double", "char", "string", "boolean", "void"
+    };
+
+
+    /**
      * A list of keywords that are recognized by this lexer.
      */
     private static final String[] KEYWORDS = {
             "if", "else", "for", "while", "continue", "break", "function"
-    };
-
-    /**
-     * A list of primitive types that are recognized by this lexer.
-     */
-    private static final String[] PRIMITIVE_TYPES = {
-            "int", "float", "double", "char", "string", "void"
     };
 
     /**
@@ -74,8 +73,8 @@ public class LexicalAnalyser {
      *
      * @return a list of {@link Token} objects representing the input value
      */
-    public List<Token> lex() {
-        List<Token> tokens = new LinkedList<>();
+    public LinkedList<Token> lex() {
+        LinkedList<Token> tokens = new LinkedList<>();
         Token token;
         do {
             token = nextToken();
@@ -89,7 +88,7 @@ public class LexicalAnalyser {
      *
      * @return the next {@link Token} from the input value
      */
-    private Token nextToken() {
+    public Token nextToken() {
         if (!hasNext())
             return new Token(TokenType.EOF, "", line, lines[line - 1] + 1);
 
@@ -110,25 +109,54 @@ public class LexicalAnalyser {
             case '\'':
                 return handleQuotedLiteral(c);
             case '{':
-                return newToken(TokenType.LEFT_CURLY_BRACE, c + "");
+                return newToken(TokenType.LEFT_CURLY_BRACE, "{");
             case '}':
-                return newToken(TokenType.RIGHT_CURLY_BRACE, c + "");
+                return newToken(TokenType.RIGHT_CURLY_BRACE, "}");
             case '(':
-                return newToken(TokenType.LEFT_PAREN, c + "");
+                return newToken(TokenType.LEFT_PAREN, "(");
             case ')':
-                return newToken(TokenType.RIGHT_PAREN, c + "");
+                return newToken(TokenType.RIGHT_PAREN, ")");
             case '[':
-                return newToken(TokenType.LEFT_BRACE, c + "");
+                return newToken(TokenType.LEFT_BRACE, "[");
             case ']':
-                return newToken(TokenType.RIGHT_BRACE, c + "");
+                return newToken(TokenType.RIGHT_BRACE, "]");
             case ',':
-                return newToken(TokenType.COMMA, c + "");
+                return newToken(TokenType.COMMA, ",");
             case ':':
-                return newToken(TokenType.COLON, c + "");
+                return newToken(TokenType.COLON, ":");
+            case '+':
+                return newToken(TokenType.PLUS, "+");
+            case '-':
+                return newToken(TokenType.MINUS, "-");
+            case '*':
+                return newToken(TokenType.MULTIPLY, "*");
+            case '/':
+                return newToken(TokenType.DIVIDE, "/");
+            case '=':
+                if (peek() == '=') {
+                    step();
+                    return newToken(TokenType.EQUAL, "==");
+                }
+                return newToken(TokenType.ASSIGNMENT, "=");
+            case '!':
+                if (peek() == '=') {
+                    step();
+                    return newToken(TokenType.NOT_EQUAL, "!=");
+                }
+                return newToken(TokenType.EXCLAMATION, "!");
+            case '<':
+                if (peek() == '=') {
+                    step();
+                    return newToken(TokenType.LESS_THAN_EQUAL, "<=");
+                }
+                return newToken(TokenType.LESS_THAN, "<");
+            case '>':
+                if (peek() == '=') {
+                    step();
+                    return newToken(TokenType.GREATER_THAN_EQUAL, ">=");
+                }
+                return newToken(TokenType.GREATER_THAN, ">");
         }
-
-        if (DefaultCheckers.operatorChecker.check(c + ""))
-            return handleOperator();
 
         if (Character.isDigit(c) || c == '.')
             return handleNumber();
@@ -158,18 +186,6 @@ public class LexicalAnalyser {
     }
 
     /**
-     * Handles the parsing of an operator in the input value.
-     *
-     * @return a {@link Token} representing the operator
-     */
-    private Token handleOperator() {
-        StringBuilder operator = new StringBuilder(String.valueOf(current()));
-        while (DefaultCheckers.operatorChecker.check(operator.toString() + peek()))
-            operator.append(step());
-        return newToken(TokenType.OPERATOR, operator.toString());
-    }
-
-    /**
      * Handles the parsing of a number in the input value.
      *
      * @return a {@link Token} representing the number
@@ -185,20 +201,15 @@ public class LexicalAnalyser {
 
         // Determine base of number based on prefix
         if (c == '0') {
-            stringBuilder.append('0');
-            c = peek();
-            if (c == 'b') {
-                radix = 2;
-                stringBuilder.append(step());
+            radix = switch (peek()) {
+                case 'b' -> 2;
+                case '0' -> 8;
+                case 'x' -> 16;
+                default -> 10;
+            };
+            if (radix != 10) {
+                stringBuilder.append(c).append(step());
                 c = step();
-            }
-            else if (c == 'x') {
-                radix = 16;
-                stringBuilder.append(step());
-                c = step();
-            }
-            else {
-                c = current();
             }
         }
 
@@ -339,6 +350,7 @@ public class LexicalAnalyser {
             return null;
         return newToken(TokenType.KEYWORD, data);
     }
+
     /**
      * Handles the parsing of a primitive type in the input value.
      *

@@ -21,8 +21,19 @@ public enum TokenType {
     RIGHT_BRACE,
     COMMA,
     COLON,
-    OPERATOR,
+    PLUS,
+    MINUS,
+    MULTIPLY,
+    DIVIDE,
+    EQUAL,
+    NOT_EQUAL,
+    LESS_THAN,
+    LESS_THAN_EQUAL,
+    GREATER_THAN,
+    GREATER_THAN_EQUAL,
+    EXCLAMATION,
     EOL,
+    ASSIGNMENT,
     EOF
 
 }

@@ -21,6 +21,8 @@ public class Script {
     public boolean init() {
         this.lexer = new LexicalAnalyser(data);
         System.out.println(lexer.lex());
+//        AbstractSyntaxTree ast = new AbstractSyntaxTree(lexer.lex());
+//        ast.program().visualize();
         return true;
     }
 
