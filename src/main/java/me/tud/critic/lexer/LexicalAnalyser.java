@@ -78,6 +78,8 @@ public class LexicalAnalyser {
         Token token;
         do {
             token = nextToken();
+            if (token.type() == TokenType.COMMENT)
+                continue;
             tokens.add(token);
         } while (token.type() != TokenType.EOF);
         return tokens;
@@ -103,6 +105,8 @@ public class LexicalAnalyser {
         cachePos();
 
         switch (c) {
+            case '#':
+                return handleComment();
             case ';':
                 return newToken(TokenType.EOL, ";");
             case '"':
@@ -125,13 +129,23 @@ public class LexicalAnalyser {
             case ':':
                 return newToken(TokenType.COLON, ":");
             case '+':
-                return newToken(TokenType.PLUS, "+");
             case '-':
-                return newToken(TokenType.MINUS, "-");
+                TokenType tokenType = c == '+' ? TokenType.PLUS : TokenType.MINUS;
+                String value = c + "";
+                if (peek() == c) {
+                    tokenType = tokenType == TokenType.PLUS ? TokenType.INCREMENT : TokenType.DECREMENT;
+                    value = c + (step() + "");
+                } else if (peek() == '=') {
+                    tokenType = tokenType == TokenType.PLUS ? TokenType.PLUS_EQUAL : TokenType.MINUS_EQUAL;
+                    value = c + (step() + "");
+                }
+                return newToken(tokenType, value);
             case '*':
                 return newToken(TokenType.MULTIPLY, "*");
             case '/':
                 return newToken(TokenType.DIVIDE, "/");
+            case '%':
+                return newToken(TokenType.MODULO, "%");
             case '=':
                 if (peek() == '=') {
                     step();
@@ -197,7 +211,6 @@ public class LexicalAnalyser {
         byte radix = 10;
         boolean usedDecimal = false;
         boolean usedExponents = false;
-        boolean shouldEnd = false;
 
         // Determine base of number based on prefix
         if (c == '0') {
@@ -214,9 +227,6 @@ public class LexicalAnalyser {
         }
 
         loop: while (true) {
-            if (shouldEnd)
-                parseException();
-
             if (c != '_')
                 stringBuilder.append(c);
 
@@ -259,8 +269,7 @@ public class LexicalAnalyser {
                         if (lookBack() == '_')
                             parseException(pos - 1);
                         tokenType = c == 'f' ? TokenType.FLOAT : TokenType.DOUBLE;
-                        shouldEnd = true;
-                        break;
+                        break loop;
                     }
                     // $FALL THROUGH$
                 default:
@@ -302,19 +311,28 @@ public class LexicalAnalyser {
      * @return a {@link Token} representing the quoted literal
      */
     private Token handleQuotedLiteral(char quote) {
-        // Initialize the token value to the opening quote
         StringBuilder stringBuilder = new StringBuilder();
         boolean escaped = false;
+        boolean comment = false;
         while (hasNext()) {
             char c = step();
-            // Check for escape characters
+
+            if (c == '#') {
+                if (!comment && peek() == '#') {
+                    stringBuilder.append('#');
+                    step();
+                } else {
+                    comment = !comment;
+                }
+            }
+            if (comment)
+                continue;
+
             if (c == '\\' && !escaped) {
                 escaped = true;
                 continue;
             }
-            // Check for the closing quote
             if (c == quote && !escaped) {
-                // Add the closing quote to the token value and return the token
                 return newToken(quote == '"' ? TokenType.STRING : TokenType.CHARACTER, stringBuilder.toString());
             }
 
@@ -322,9 +340,9 @@ public class LexicalAnalyser {
                 parseException("Invalid character literal", pos);
 
             escaped = false;
-            stringBuilder.append(c);
+            if (c != '#')
+                stringBuilder.append(c);
         }
-        // If we reach the end of the input value without finding the closing quote, throw a parse exception
         return (Token) parseException("Unterminated quoted literal", pos);
     }
     /**
@@ -404,6 +422,15 @@ public class LexicalAnalyser {
         }
 
         return null;
+    }
+
+    private Token handleComment() {
+        if (hasNext()) {
+            char current = step();
+            while (current != '\n' && current != '#' && hasNext())
+                current = step();
+        }
+        return newToken(TokenType.COMMENT, "");
     }
 
     private char stepBack() {

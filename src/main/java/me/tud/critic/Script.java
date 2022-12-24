@@ -1,6 +1,8 @@
 package me.tud.critic;
 
 import me.tud.critic.lexer.LexicalAnalyser;
+import me.tud.critic.parser.AbstractSyntaxTree;
+import me.tud.critic.parser.node.ASTNode;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
@@ -20,9 +22,11 @@ public class Script {
 
     public boolean init() {
         this.lexer = new LexicalAnalyser(data);
-        System.out.println(lexer.lex());
-//        AbstractSyntaxTree ast = new AbstractSyntaxTree(lexer.lex());
-//        ast.program().visualize();
+        AbstractSyntaxTree ast = new AbstractSyntaxTree(lexer.lex());
+        ASTNode rootNode = ast.program();
+        rootNode.init();
+        rootNode.evaluate();
+//        rootNode.visualize();
         return true;
     }
 

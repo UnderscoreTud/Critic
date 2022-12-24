@@ -34,6 +34,11 @@ public enum TokenType {
     EXCLAMATION,
     EOL,
     ASSIGNMENT,
+    MODULO,
+    INCREMENT,
+    DECREMENT,
+    PLUS_EQUAL,
+    MINUS_EQUAL,
     EOF
 
 }
