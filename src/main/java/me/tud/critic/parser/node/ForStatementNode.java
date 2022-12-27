@@ -15,7 +15,7 @@ public class ForStatementNode extends ControlNode {
     private final ExpressionNode expression;
 
     public ForStatementNode(@Nullable AssignmentNode assignment, @Nullable ConditionNode condition, @Nullable ExpressionNode expression, BlockNode block) {
-        super(ASTNodeType.WHILE, block);
+        super(ASTNodeType.FOR, block);
         this.assignment = assignment;
         this.condition = condition;
         this.expression = expression;
@@ -35,7 +35,7 @@ public class ForStatementNode extends ControlNode {
 
     @Override
     public List<ASTNode> getChildren() {
-        return CollectionUtils.listOfNonNullables(assignment, condition, expression);
+        return CollectionUtils.listOfNonNullables(assignment, condition, expression, getBlock());
     }
 
     @Override
@@ -43,9 +43,9 @@ public class ForStatementNode extends ControlNode {
         if (assignment != null)
             assignment.evaluate();
         while (condition == null || condition.evaluate()) {
+            getBlock().evaluate();
             if (expression != null)
                 expression.evaluate();
-            getBlock().evaluate();
         }
         return null;
     }

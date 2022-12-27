@@ -1,31 +1,43 @@
 package me.tud.critic.parser;
 
+import me.tud.critic.data.types.Type;
+import me.tud.critic.data.variables.VariablesMap;
 import me.tud.critic.parser.node.*;
 import me.tud.critic.exception.ParseException;
 import me.tud.critic.lexer.token.Token;
 import me.tud.critic.lexer.token.TokenType;
 import me.tud.critic.data.types.Types;
 import me.tud.critic.util.Checker;
+import me.tud.critic.util.ComparisonOperator;
 import me.tud.critic.util.NumberUtils;
-import org.w3c.dom.Node;
 
 import java.util.LinkedList;
 
 public class AbstractSyntaxTree {
 
     private static final Checker<TokenType> numberChecker = tokenType -> tokenType == TokenType.INT || tokenType == TokenType.FLOAT || tokenType == TokenType.DOUBLE;
-    private static final Checker<TokenType> comparisonOperatorChecker = tokenType ->
-            tokenType == TokenType.EQUAL || tokenType == TokenType.NOT_EQUAL
-                    || tokenType == TokenType.LESS_THAN || tokenType == TokenType.LESS_THAN_EQUAL
-                    || tokenType == TokenType.GREATER_THAN || tokenType == TokenType.GREATER_THAN_EQUAL;
 
     private final LinkedList<Token> tokens;
+
+    /**
+     * The current position in the input value.
+     */
+    private int pos = 0;
+
+    /**
+     * A cached position in the input value, used to backtrack when necessary.
+     */
+    private int cachedPos = 0;
+
     private Token currentToken;
+    private Type currentType;
     private int curlyBracesCount = 0;
+    private VariablesMap variablesMap;
 
     public AbstractSyntaxTree(LinkedList<Token> tokens) {
         this.tokens = tokens;
-        this.currentToken = tokens.pop();
+        this.currentToken = tokens.get(pos++);
+        this.variablesMap = new VariablesMap();
     }
 
     // Grammar:
@@ -33,11 +45,13 @@ public class AbstractSyntaxTree {
     public ProgramNode program() {
         if (currentToken.type() == TokenType.EOF)
             return null;
+        variablesMap = new VariablesMap(variablesMap);
         StatementNode node = statement();
         if (currentToken.type() == TokenType.EOF || (currentToken.type() == TokenType.RIGHT_CURLY_BRACE && curlyBracesCount > 0)) {
             if (currentToken.type() == TokenType.RIGHT_CURLY_BRACE) {
                 eat(TokenType.RIGHT_CURLY_BRACE);
                 curlyBracesCount--;
+                variablesMap = variablesMap.getParentMap();
             }
             return new ProgramNode(node);
         } else {
@@ -54,7 +68,8 @@ public class AbstractSyntaxTree {
             return control();
         } else if (currentToken.type() == TokenType.TYPE && peekTokenType() == TokenType.KEYWORD && "function".equals(peekTokenValue())) {
             return functionDeclaration();
-        } else if (currentToken.type() == TokenType.TYPE && peekTokenType() == TokenType.IDENTIFIER) {
+        } else if ((currentToken.type() == TokenType.TYPE && peekTokenType() == TokenType.IDENTIFIER)
+                || (currentToken.type() == TokenType.IDENTIFIER && peekTokenType() == TokenType.ASSIGNMENT)) {
             AssignmentNode node = assignment();
             eat(TokenType.EOL);
             return node;
@@ -79,8 +94,8 @@ public class AbstractSyntaxTree {
     //          | "for" "(" assignment ";" condition ";" expression ")" block
     public ControlNode control() {
         Token token = currentToken;
+        eat(TokenType.KEYWORD);
         if (token.value().equals("if")) {
-            eat(TokenType.KEYWORD);
             eat(TokenType.LEFT_PAREN);
             ConditionNode condition = condition();
             eat(TokenType.RIGHT_PAREN);
@@ -97,14 +112,12 @@ public class AbstractSyntaxTree {
                 return new IfStatementNode(condition, thenBlock);
             }
         } else if (token.value().equals("while")) {
-            eat(TokenType.KEYWORD);
             eat(TokenType.LEFT_PAREN);
             ConditionNode condition = condition();
             eat(TokenType.RIGHT_PAREN);
             BlockNode block = block();
             return new WhileStatementNode(condition, block);
         } else {
-            eat(TokenType.KEYWORD);
             eat(TokenType.LEFT_PAREN);
 
             AssignmentNode assignment = currentToken.type() != TokenType.EOL ? assignment() : null;
@@ -119,28 +132,27 @@ public class AbstractSyntaxTree {
     }
 
     // Grammar:
-    // condition: expression operator expression | expression (boolean)
+    // condition: comparison | expression (boolean)
     public ConditionNode condition() {
         ExpressionNode left = expression();
-        Token operator = currentToken;
-        if (comparisonOperatorChecker.check(operator.type())) {
-            eat(operator.type());
-            ExpressionNode right = expression();
-            return new ComparisonNode(left, new OperatorNode(operator.value()), right);
-        }
+        if (left instanceof ConditionNode)
+            return (ConditionNode) left;
         return new ExprConditionNode(left);
     }
 
     // Grammar:
-    // block: "{" [program] "}"
+    // block: "{" [program] "}" | statement
     public BlockNode block() {
-        eat(TokenType.LEFT_CURLY_BRACE);
-        if (currentToken.type() == TokenType.RIGHT_CURLY_BRACE) {
-            eat(TokenType.RIGHT_CURLY_BRACE);
-            return new BlockNode();
+        if (currentToken.type() == TokenType.LEFT_CURLY_BRACE) {
+            eat(TokenType.LEFT_CURLY_BRACE);
+            if (currentToken.type() == TokenType.RIGHT_CURLY_BRACE) {
+                eat(TokenType.RIGHT_CURLY_BRACE);
+                return new BlockNode();
+            }
+            curlyBracesCount++;
+            return new BlockNode(program());
         }
-        curlyBracesCount++;
-        return new BlockNode(program());
+        return new BlockNode(statement());
     }
 
     // Grammar:
@@ -149,6 +161,10 @@ public class AbstractSyntaxTree {
         TypeNode type = type();
         eat(TokenType.KEYWORD);
         IdentifierNode identifier = identifier();
+
+        if (Character.isWhitespace(currentToken.previousChar()))
+            throw new ParseException("Expected LEFT_PAREN, got: WHITESPACE");
+
         eat(TokenType.LEFT_PAREN);
         ParametersNode parameters = parameters();
         eat(TokenType.RIGHT_PAREN);
@@ -184,12 +200,12 @@ public class AbstractSyntaxTree {
                 eat(TokenType.ASSIGNMENT);
                 expression = expression();
             }
-            return new AssignmentNode(type, identifier, expression);
+            return new AssignmentNode(type, identifier, expression, variablesMap);
         }
         IdentifierNode identifier = identifier();
         eat(TokenType.ASSIGNMENT);
         ExpressionNode expression = expression();
-        return new AssignmentNode(identifier, expression);
+        return new AssignmentNode(identifier, expression, variablesMap);
     }
 
     // Grammar:
@@ -251,7 +267,7 @@ public class AbstractSyntaxTree {
             });
         } else if (token.type() == TokenType.STRING) {
             eat(TokenType.STRING);
-            expression = new LiteralStringNode(token.value());
+            expression = new LiteralStringNode(token.value(), variablesMap);
         } else if (token.type() == TokenType.CHARACTER) {
             eat(TokenType.CHARACTER);
             expression = new LiteralCharacterNode(token.value().charAt(0));
@@ -262,18 +278,30 @@ public class AbstractSyntaxTree {
             if (peekTokenType() == TokenType.LEFT_PAREN) {
                 expression = functionCall();
             } else {
-                expression = new VariableNode(identifier());
+                expression = new VariableNode(identifier(), variablesMap);
             }
         } else {
             throw new ParseException("Unexpected token: " + token);
         }
         if (currentToken.type() == TokenType.INCREMENT) {
             eat(TokenType.INCREMENT);
-            return new IncrementNode(expression, true);
+            expression = new IncrementNode(expression, true);
         }
         if (currentToken.type() == TokenType.DECREMENT) {
             eat(TokenType.DECREMENT);
-            return new DecrementNode(expression, true);
+            expression = new DecrementNode(expression, true);
+        }
+        if (currentToken.type() == TokenType.COMPARISON_OPERATOR) {
+            String operator = currentToken.value();
+            eat(TokenType.COMPARISON_OPERATOR);
+            expression = new ComparisonNode(expression, new OperatorNode(operator), expression());
+        }
+        if (currentToken.type() == TokenType.QUESTION_MARK) {
+            eat(TokenType.QUESTION_MARK);
+            ExpressionNode thenExpression = expression();
+            eat(TokenType.COLON);
+            ExpressionNode elseExpression = expression();
+            return new TernaryOperator(expression, thenExpression, elseExpression, currentType);
         }
         return expression;
     }
@@ -282,6 +310,10 @@ public class AbstractSyntaxTree {
     // function_call: identifier "(" [arguments] ")"
     public FunctionCallNode functionCall() {
         IdentifierNode identifier = identifier();
+
+        if (Character.isWhitespace(currentToken.previousChar()))
+            throw new ParseException("Expected token type LEFT_PAREN, got: WHITESPACE");
+
         eat(TokenType.LEFT_PAREN);
         ArgumentsNode arguments = arguments();
         eat(TokenType.RIGHT_PAREN);
@@ -291,7 +323,7 @@ public class AbstractSyntaxTree {
     // Grammar:
     // arguments: expression | expression "," arguments
     public ArgumentsNode arguments() {
-        if (currentToken.type() == TokenType.RIGHT_PAREN) {
+        if (previousTokenType() == TokenType.LEFT_PAREN && currentToken.type() == TokenType.RIGHT_PAREN) {
             return null;
         } else {
             ExpressionNode expression = expression();
@@ -307,19 +339,25 @@ public class AbstractSyntaxTree {
     // Helper methods
 
     private TokenType peekTokenType() {
-        Token token = tokens.peek();
+        Token token = tokens.get(pos);
         return token == null ? null : token.type();
     }
 
     private String peekTokenValue() {
-        Token token = tokens.peek();
+        Token token = tokens.get(pos);
         return token == null ? null : token.value();
+    }
+
+    private TokenType previousTokenType() {
+        Token token = tokens.get(pos - 1);
+        return token == null ? null : token.type();
     }
 
     private TypeNode type() {
         Token token = currentToken;
         eat(TokenType.TYPE);
-        return new TypeNode(Types.lookupType(token.value()));
+        currentType = Types.lookupType(token.value());
+        return new TypeNode(currentType);
     }
 
     private IdentifierNode identifier() {
@@ -330,18 +368,32 @@ public class AbstractSyntaxTree {
 
     private void eat(TokenType tokenType) {
         if (currentToken.type() == tokenType) {
-            currentToken = tokens.pop();
+            currentToken = tokens.get(pos++);
         } else {
-            throw new ParseException("Expected token type " + tokenType + ", got " + currentToken);
+            throw new ParseException("Expected token type " + tokenType + ", got " + currentToken.type() + " at " + currentToken.line() + ':' + currentToken.pos());
         }
     }
 
     private void eatNumber() {
         if (numberChecker.check(currentToken.type())) {
-            currentToken = tokens.pop();
+            currentToken = tokens.get(pos++);
         } else {
             throw new ParseException("Expected token type NUMBER, got " + currentToken);
         }
+    }
+
+    /**
+     * Caches the current position in the input value.
+     */
+    private void cachePos() {
+        cachedPos = pos;
+    }
+
+    /**
+     * Reverts the position in the input value back to the previously cached position.
+     */
+    private void revertToCachedPos() {
+        pos = cachedPos;
     }
 
 }

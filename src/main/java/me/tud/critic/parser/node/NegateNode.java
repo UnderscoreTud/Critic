@@ -14,8 +14,6 @@ public class NegateNode extends ExpressionNode {
 
     public NegateNode(ExpressionNode expression) {
         super(ASTNode.ASTNodeType.NEGATE);
-        if (!expression.getReturnType().is("boolean"))
-            throw new ParseException("Expected BOOLEAN expression but got: " + expression);
         this.expression = expression;
     }
 
@@ -26,6 +24,15 @@ public class NegateNode extends ExpressionNode {
     @Override
     public List<ASTNode> getChildren() {
         return Collections.singletonList(expression);
+    }
+
+    @Override
+    public void init() {
+        int i = 0;
+        int i1 = i++ + ++i;
+        expression.init();
+        if (!expression.getReturnType().is("boolean"))
+            throw new ParseException("Expected BOOLEAN expression but got: " + expression);
     }
 
     @Override

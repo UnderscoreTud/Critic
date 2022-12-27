@@ -38,6 +38,8 @@ public class LexicalAnalyser {
      */
     private int cachedPos = 0;
 
+    private char previousChar;
+
     /**
      * The current line number in the input value.
      */
@@ -92,17 +94,19 @@ public class LexicalAnalyser {
      */
     public Token nextToken() {
         if (!hasNext())
-            return new Token(TokenType.EOF, "", line, lines[line - 1] + 1);
+            return new Token(TokenType.EOF, "", lookBack(), line, lines[line - 1] + 1);
 
         char c = step();
 
         // Skip over any leading whitespace
         while (Character.isWhitespace(c)) {
             if (!hasNext())
-                return new Token(TokenType.EOF, "", line, lines[line - 1] + 1);
+                return new Token(TokenType.EOF, "", lookBack(), line, lines[line - 1] + 1);
             c = step();
         }
+
         cachePos();
+        previousChar = lookBack();
 
         switch (c) {
             case '#':
@@ -126,6 +130,8 @@ public class LexicalAnalyser {
                 return newToken(TokenType.RIGHT_BRACE, "]");
             case ',':
                 return newToken(TokenType.COMMA, ",");
+            case '?':
+                return newToken(TokenType.QUESTION_MARK, "?");
             case ':':
                 return newToken(TokenType.COLON, ":");
             case '+':
@@ -149,27 +155,27 @@ public class LexicalAnalyser {
             case '=':
                 if (peek() == '=') {
                     step();
-                    return newToken(TokenType.EQUAL, "==");
+                    return newToken(TokenType.COMPARISON_OPERATOR, "==");
                 }
                 return newToken(TokenType.ASSIGNMENT, "=");
             case '!':
                 if (peek() == '=') {
                     step();
-                    return newToken(TokenType.NOT_EQUAL, "!=");
+                    return newToken(TokenType.COMPARISON_OPERATOR, "!=");
                 }
                 return newToken(TokenType.EXCLAMATION, "!");
             case '<':
                 if (peek() == '=') {
                     step();
-                    return newToken(TokenType.LESS_THAN_EQUAL, "<=");
+                    return newToken(TokenType.COMPARISON_OPERATOR, "<=");
                 }
-                return newToken(TokenType.LESS_THAN, "<");
+                return newToken(TokenType.COMPARISON_OPERATOR, "<");
             case '>':
                 if (peek() == '=') {
                     step();
-                    return newToken(TokenType.GREATER_THAN_EQUAL, ">=");
+                    return newToken(TokenType.COMPARISON_OPERATOR, ">=");
                 }
-                return newToken(TokenType.GREATER_THAN, ">");
+                return newToken(TokenType.COMPARISON_OPERATOR, ">");
         }
 
         if (Character.isDigit(c) || c == '.')
@@ -441,7 +447,7 @@ public class LexicalAnalyser {
     }
 
     private char lookBack() {
-        if (pos < 1)
+        if (pos < 2)
             return '\0';
         return data.charAt(pos - 2);
     }
@@ -513,7 +519,7 @@ public class LexicalAnalyser {
      * @return a new token with the given type and value
      */
     private Token newToken(TokenType type, String value) {
-        return new Token(type, value, line, cachedLineLength);
+        return new Token(type, value, previousChar, line, cachedLineLength);
     }
 
     public String getData() {

@@ -25,12 +25,7 @@ public enum TokenType {
     MINUS,
     MULTIPLY,
     DIVIDE,
-    EQUAL,
-    NOT_EQUAL,
-    LESS_THAN,
-    LESS_THAN_EQUAL,
-    GREATER_THAN,
-    GREATER_THAN_EQUAL,
+    COMPARISON_OPERATOR,
     EXCLAMATION,
     EOL,
     ASSIGNMENT,
@@ -39,6 +34,7 @@ public enum TokenType {
     DECREMENT,
     PLUS_EQUAL,
     MINUS_EQUAL,
+    QUESTION_MARK,
     EOF
 
 }

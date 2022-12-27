@@ -2,7 +2,7 @@ package me.tud.critic.parser.node;
 
 import com.google.common.base.Preconditions;
 import me.tud.critic.data.variables.Variable;
-import me.tud.critic.data.variables.Variables;
+import me.tud.critic.data.variables.VariablesMap;
 import me.tud.critic.exception.ParseException;
 import me.tud.critic.util.CollectionUtils;
 import org.jetbrains.annotations.Contract;
@@ -18,23 +18,25 @@ public class AssignmentNode extends StatementNode {
     private final IdentifierNode identifier;
     @Nullable
     private final ExpressionNode expression;
+    private final VariablesMap variablesMap;
     private Variable variable;
 
-    public AssignmentNode(IdentifierNode identifier, @NotNull ExpressionNode expression) {
-        this(null, identifier, expression);
+    public AssignmentNode(IdentifierNode identifier, @NotNull ExpressionNode expression, VariablesMap variablesMap) {
+        this(null, identifier, expression, variablesMap);
     }
 
-    public AssignmentNode(@NotNull TypeNode type, IdentifierNode identifier) {
-        this(type, identifier, null);
+    public AssignmentNode(@NotNull TypeNode type, IdentifierNode identifier, VariablesMap variablesMap) {
+        this(type, identifier, null, variablesMap);
     }
 
-    @Contract("null, _, null -> fail")
-    public AssignmentNode(@Nullable TypeNode type, IdentifierNode identifier, @Nullable ExpressionNode expression) {
+    @Contract("null, _, null, _ -> fail")
+    public AssignmentNode(@Nullable TypeNode type, IdentifierNode identifier, @Nullable ExpressionNode expression, VariablesMap variablesMap) {
         super(ASTNodeType.ASSIGNMENT);
         Preconditions.checkArgument(type != null || expression != null, "TypeNode and ExpressionNode cannot be null at the same time");
         this.type = type;
         this.identifier = identifier;
         this.expression = expression;
+        this.variablesMap = variablesMap;
     }
 
     public @Nullable TypeNode getType() {
@@ -62,9 +64,11 @@ public class AssignmentNode extends StatementNode {
     public void init() {
         super.init();
         if (isDeclaration()) {
-            variable = Variables.declareVariable(type.evaluate(), identifier.evaluate());
+            variable = variablesMap.declareVariable(type.evaluate(), identifier.evaluate());
         } else {
-            variable = Variables.getVariable(identifier.evaluate());
+            variable = variablesMap.getVariable(identifier.evaluate());
+            if (variable == null)
+                throw new ParseException("The variable '" + identifier.evaluate() + "' does not exist");
         }
         if (expression != null) {
             if (variable.getType() != expression.getReturnType())

@@ -28,6 +28,10 @@ public class Type {
         return this == Types.lookupType(typeName);
     }
 
+    public boolean is(Type type) {
+        return this == type;
+    }
+
     @Override
     public String toString() {
         final StringBuilder sb = new StringBuilder("Type{");

@@ -38,6 +38,7 @@ public final class Types {
         numberTypeMap.put(Long.class, getPrimitiveType("long"));
         numberTypeMap.put(Float.class, getPrimitiveType("float"));
         numberTypeMap.put(Double.class, getPrimitiveType("double"));
+        registerClass("Object");
     }
 
     private Types() {

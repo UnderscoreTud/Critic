@@ -19,10 +19,10 @@ public abstract class ExpressionNode extends StatementNode {
 
     public abstract Type getReturnType();
 
-    @Override
-    public String toString() {
-        return "ExpressionNode{" + "nodeType=" + getNodeType() +
-                ", returnType=" + getReturnType() +
-                '}';
-    }
+//    @Override
+//    public String toString() {
+//        return "ExpressionNode{" + "nodeType=" + getNodeType() +
+//                ", returnType=" + getReturnType() +
+//                '}';
+//    }
 }

@@ -4,11 +4,8 @@ import hu.webarticum.treeprinter.Insets;
 import hu.webarticum.treeprinter.TreeNode;
 import hu.webarticum.treeprinter.decorator.BorderTreeNodeDecorator;
 import hu.webarticum.treeprinter.decorator.PadTreeNodeDecorator;
-import hu.webarticum.treeprinter.decorator.ShadowTreeNodeDecorator;
 import hu.webarticum.treeprinter.printer.traditional.TraditionalTreePrinter;
-import hu.webarticum.treeprinter.text.AnsiFormat;
 import hu.webarticum.treeprinter.text.ConsoleText;
-import me.tud.critic.util.CollectionUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,7 +22,6 @@ public abstract class ASTNode implements TreeNode {
     public ASTNode(ASTNodeType nodeType, Object value) {
         this.nodeType = nodeType;
         this.value = value;
-//        System.out.println(this);
     }
 
     public ASTNodeType getNodeType() {
@@ -69,18 +65,20 @@ public abstract class ASTNode implements TreeNode {
     public enum ASTNodeType {
         ARGUMENTS,
         ASSIGNMENT,
+        ASSIGN_EXPRESSION,
         BLOCK,
         CONDITION,
-        FUNCTION_DECLARATION,
+        ELSE_IF,
         EMPTY,
         EXPRESSION,
         FACTOR,
         FOR,
         FUNCTION_CALL,
+        FUNCTION_DECLARATION,
         IDENTIFIER,
         IF,
         IF_ELSE,
-        ELSE_IF,
+        LITERAL_BOOLEAN,
         LITERAL_CHARACTER,
         LITERAL_STRING,
         NEGATE,
@@ -94,9 +92,9 @@ public abstract class ASTNode implements TreeNode {
         TERM,
         TYPE,
         VARIABLE,
-        LITERAL_BOOLEAN,
-        ASSIGN_EXPRESSION,
+        TERNARY_OPERATOR,
         WHILE
+
 
     }
 

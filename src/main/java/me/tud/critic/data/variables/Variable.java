@@ -39,4 +39,14 @@ public class Variable {
         this.value = value;
     }
 
+    @Override
+    public String toString() {
+        final StringBuilder sb = new StringBuilder("Variable{");
+        sb.append("type=").append(type);
+        sb.append(", identifier='").append(identifier).append('\'');
+        sb.append(", value=").append(value);
+        sb.append('}');
+        return sb.toString();
+    }
+
 }

@@ -2,7 +2,7 @@ package me.tud.critic.parser.node;
 
 import me.tud.critic.data.types.Type;
 import me.tud.critic.data.variables.Variable;
-import me.tud.critic.data.variables.Variables;
+import me.tud.critic.data.variables.VariablesMap;
 import me.tud.critic.exception.ParseException;
 
 import java.util.Collections;
@@ -11,11 +11,13 @@ import java.util.List;
 public class VariableNode extends ExpressionNode {
 
     private final IdentifierNode identifier;
+    private final VariablesMap variablesMap;
     private Variable variable;
 
-    public VariableNode(IdentifierNode identifier) {
+    public VariableNode(IdentifierNode identifier, VariablesMap variablesMap) {
         super(ASTNodeType.VARIABLE);
         this.identifier = identifier;
+        this.variablesMap = variablesMap;
     }
 
     public IdentifierNode getIdentifier() {
@@ -33,8 +35,7 @@ public class VariableNode extends ExpressionNode {
 
     @Override
     public void init() {
-        super.init();
-        variable = Variables.getVariable(identifier.evaluate());
+        variable = variablesMap.getVariable(identifier.evaluate());
         if (variable == null)
             throw new ParseException("The variable '" + identifier.evaluate() + "' does not exist");
     }

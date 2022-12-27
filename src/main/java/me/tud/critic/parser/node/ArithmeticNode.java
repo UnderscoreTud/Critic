@@ -1,6 +1,5 @@
 package me.tud.critic.parser.node;
 
-import me.tud.critic.data.Expression;
 import me.tud.critic.data.types.Type;
 import me.tud.critic.data.types.Types;
 import me.tud.critic.exception.ParseException;
@@ -63,7 +62,7 @@ public class ArithmeticNode extends ExpressionNode {
 
     @Override
     public Type getReturnType() {
-        return Types.getNumberPrimitive();
+        return returnType;
     }
 
 }

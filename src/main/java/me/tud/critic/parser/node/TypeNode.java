@@ -1,5 +1,6 @@
 package me.tud.critic.parser.node;
 
+import hu.webarticum.treeprinter.text.ConsoleText;
 import me.tud.critic.data.types.Type;
 
 public class TypeNode extends ASTNode {
@@ -18,6 +19,11 @@ public class TypeNode extends ASTNode {
     @Override
     public Type evaluate() {
         return type;
+    }
+
+    @Override
+    public ConsoleText content() {
+        return ConsoleText.of("TYPE: '" + type.getName() + '\'');
     }
 
 }

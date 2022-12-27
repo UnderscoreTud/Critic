@@ -1,5 +1,6 @@
 package me.tud.critic;
 
+import me.tud.critic.data.variables.VariablesMap;
 import me.tud.critic.lexer.LexicalAnalyser;
 import me.tud.critic.parser.AbstractSyntaxTree;
 import me.tud.critic.parser.node.ASTNode;
@@ -14,10 +15,16 @@ public class Script {
     private final String fileName;
     private final String data;
     private LexicalAnalyser lexer;
+    private AbstractSyntaxTree ast;
+    private VariablesMap variablesMap;
 
     public Script(@NotNull String fileName, InputStream inputStream) throws IOException {
+        this(fileName, new String(inputStream.readAllBytes()));
+    }
+
+    public Script(@NotNull String fileName, String data) {
         this.fileName = fileName;
-        this.data = new String(inputStream.readAllBytes());
+        this.data = data;
     }
 
     public boolean init() {
@@ -30,16 +37,24 @@ public class Script {
         return true;
     }
 
-    public @NotNull String getFileName() {
+    public String getFileName() {
         return fileName;
+    }
+
+    public String getData() {
+        return data;
     }
 
     public LexicalAnalyser getLexer() {
         return lexer;
     }
 
-    public String getData() {
-        return lexer.getData();
+    public AbstractSyntaxTree getAst() {
+        return ast;
+    }
+
+    public VariablesMap getVariablesMap() {
+        return variablesMap;
     }
 
     @Override
